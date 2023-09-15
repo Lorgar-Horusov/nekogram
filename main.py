@@ -30,7 +30,7 @@ async def info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
            "Если у вас есть какие-либо вопросы или хотите " \
            "что-нибудь удивительное, то просто пишите мне! Я всегда здесь, " \
            "чтобы радовать вас ответами и изображениями!~ (─‿‿─)\n" \
-           "Вы также можете найти меня на [GitHub:](https://github.com/Lorgar-Horusov)"
+           "Вы также можете найти меня на [GitHub:](https://github.com/Lorgar-Horusov/nekogram)"
     await context.bot.send_photo(chat_id=update.effective_chat.id,
                                  photo='https://i.ibb.co/VSvjnLh/image.png',
                                  caption=text, parse_mode='Markdown')
