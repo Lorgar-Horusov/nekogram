@@ -16,6 +16,8 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     /ask - задать вопрос боту
     /imagine - сгенерировать изображения 
     '''
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=text,
+                                   reply_to_message_id=update.effective_message.id)
 
 
 async def info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
