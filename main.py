@@ -4,7 +4,6 @@ from modules import chatGPT, image_ai
 from colorama import Fore
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from keep_alive import keep_alive
 
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_KEY')
@@ -119,7 +118,6 @@ async def model_list(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 def main():
     try:
-        keep_alive()
         app = ApplicationBuilder().token(TOKEN).build()
         app.add_handler(CommandHandler("ask", ask))
         app.add_handler(CommandHandler("info", info))
