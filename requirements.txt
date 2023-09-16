@@ -2,3 +2,7 @@ openai
 python-dotenv
 python-telegram-bot
 colorama
+
+uvicorn
+fastapi
+aiohttp

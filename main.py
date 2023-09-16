@@ -1,14 +1,18 @@
 import os
+
+from fastapi import FastAPI
 from dotenv import load_dotenv
 from modules import chatGPT, image_ai
 from colorama import Fore
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+import uvicorn
+
 
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_KEY')
 logger = True
-
+app = FastAPI()
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = '''
@@ -133,4 +137,5 @@ def main():
 
 
 if __name__ == '__main__':
+    uvicorn.run(app, host="0.0.0.0", port=8181)
     main()
