@@ -1,15 +1,33 @@
 import asyncio
 import random
-import time
+from enum import Enum
 from urllib.parse import quote
 
 import aiohttp
 
 
-async def generate_image_prodia(prompt, neg):
-    print("\033[1;32m(Prodia) Creating image for :\033[0m", prompt)
-    start_time = time.time()
-    model = "anything-v4.5-pruned.ckpt [65745d25]"
+class Model(Enum):
+    analog = "analog-diffusion-1.0.ckpt [9ca13f02]"
+    anything = "anything-v4.5-pruned.ckpt [65745d25]"
+    abyss = "AOM3A3_orangemixs.safetensors [9600da17]"
+    deliberate = "deliberate_v2.safetensors [10ec4b29]"
+    dreamlike = "dreamlike-diffusion-2.0.safetensors [fdcf65e7]"
+    dreamsharper = "dreamshaper_6BakedVae.safetensors [114c8abb]"
+    vivild = "elldreths-vivid-mix.safetensors [342d9d26]"
+    lyriel = "lyriel_v16.safetensors [68fceea2]"
+    mechamix = "meinamix_meinaV9.safetensors [2ec66ab0]"
+    openjourney = "openjourney_V4.ckpt [ca2f377f]"
+    portrait = "portrait+1.0.safetensors [1400e684]"
+    realistic = "Realistic_Vision_V2.0.safetensors [79587710]"
+    revanimated = "revAnimated_v122.safetensors [3f4fefd9]"
+    riffusion = "riffusion-model-v1.ckpt [3aafa6fe]"
+    sd15 = "v1-5-pruned-emaonly.ckpt [81761151]"
+    sbp = "shoninsBeautiful_v10.safetensors [25d8c546]"
+    theallys = "theallys-mix-ii-churned.safetensors [5d9225a4]"
+    timeless = "timeless-1.0.ckpt [7c4971d4]"
+
+
+async def generate_image_prodia(prompt, model, neg):
     sampler = 'Euler'
     seed = random.randint(1, 99999)
 
@@ -22,7 +40,7 @@ async def generate_image_prodia(prompt, neg):
         params = {
             'new': 'true',
             'prompt': f'{quote(prompt)}',
-            'model': model,
+            'model': model.value,
             'negative_prompt': f"{negative}",
             'steps': '100',
             'cfg': '9.5',
@@ -51,17 +69,12 @@ async def generate_image_prodia(prompt, neg):
                     image_url = f'https://images.prodia.xyz/{job_id}.png'
                     # print(image_url)
                     return image_url
-                    # async with session.get(f'https://images.prodia.xyz/{job_id}.png?download=1',
-                    #                        headers=headers) as response:
-                    #     content = await response.content.read()
-                    #     img_file_obj = io.BytesIO(content)
-                    #     duration = time.time() - start_time
-                    #     print(f"\033[1;34m(Prodia) Finished image creation\n\033[0mJob id : {job_id}  Prompt : ",
-                    #           prompt, "in", duration, "seconds.")
-                    #     return img_file_obj
 
 
 if __name__ == "__main__":
-
-    asyncio.run(
-        generate_image_prodia(prompt='cat girl', neg=None))
+    model_name = input("Введите имя модели: ")
+    try:
+        model_enum = Model[model_name]
+    except KeyError:
+        print(f"Модель '{model_name}' не найдена в перечислении Model.")
+    asyncio.run(generate_image_prodia(prompt='cat girl', model=model_enum, neg=None))
