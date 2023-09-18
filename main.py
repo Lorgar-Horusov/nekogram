@@ -6,6 +6,7 @@ from colorama import Fore
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
+from keep_alive import keep_alive
 
 from modules import chatGPT, image_ai
 
@@ -223,6 +224,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main():
     try:
+        keep_alive()
         app = ApplicationBuilder().token(TOKEN).build()
         app.add_handler(CommandHandler("ask", ask))
         app.add_handler(CommandHandler("msend", msend))
