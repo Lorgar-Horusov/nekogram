@@ -2,13 +2,14 @@ import json
 import logging
 import os
 
-from colorama import Fore
+from colorama import Fore, Style
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
+import time
 # from keep_alive import keep_alive
 
-from modules import chatGPT, image_ai
+from modules import chatGPT, image_ai, bot_tts
 
 load_dotenv()
 TOKEN = os.getenv('TELEGRAM_KEY')
@@ -51,7 +52,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
            "что-нибудь удивительное, то просто пишите мне! Я всегда здесь, " \
            "чтобы радовать вас ответами и изображениями!~ (─‿‿─)\n" \
            "Вы также можете найти меня на [GitHub:](https://github.com/Lorgar-Horusov/nekogram)\n" \
-           "Если вы хотите поддержать моего разработчика, то можете купить ему баночку энергетика\n"
+           "Если вы хотите поддержать моего разработчика, то можете купить ему баночку энергетика\n" \
+           "Или помочь ему с приобретением нового хостинга [Boosty:](Link)"  # TODO не забудь оставить ссылку
 
     try:
         with open(json_file_path, "r") as json_file:
@@ -78,17 +80,23 @@ async def ask(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                                    '/ask request')
     prompt = r' '.join(context.args)
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action='typing')
+    start_timer = time.time()
     text = await chatGPT.chat_response(prompt=prompt)
     await context.bot.send_message(chat_id=update.effective_chat.id, text=text,
-                                   reply_to_message_id=update.effective_message.id, parse_mode='Markdown')
+                                   reply_to_message_id=update.effective_message.id)
+    end_timer = time.time()
+    result = round(end_timer - start_timer, 2)
     if user_logger:
-        print(f'{Fore.YELLOW}User {update.effective_user.name} requested:{Fore.CYAN}\n'
+        print(f'{Fore.YELLOW + Style.BRIGHT}User {Fore.LIGHTBLUE_EX}{update.effective_user.name}{Fore.YELLOW}'
+              f'requested:{Fore.CYAN + Style.NORMAL}\n'
               f'"{prompt}"\n'
-              f'{Fore.YELLOW}nekogram response:{Fore.CYAN}\n"{text}"{Fore.RESET}')
+              f'{Fore.YELLOW + Style.BRIGHT}Nekogram response: {Fore.LIGHTBLUE_EX}{result} seconds{Fore.CYAN}\n'
+              f'"{text}"{Fore.RESET}')
 
 
 async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=update.effective_user.id)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=f'User ID = {update.effective_user.id}\n'
+                                                                          f'Chat ID = {update.effective_chat.id}')
 
 
 async def msend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -114,7 +122,7 @@ async def imagine(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     censor_words = ['NSFW', 'nude', 'naked',
                     'shota', 'loli', 'hentai',
                     'explicit', 'pornography', 'XXX',
-                    'sex', 'nsfw', 'gore']
+                    'sex', 'nsfw', 'gore', 'fuck']
     censor = False
     censor_warning = 'safe✅'
     for word in words_prompt:
@@ -175,14 +183,33 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await query.answer()
     await query.delete_message()
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action='upload_photo')
+    start_timer = time.time()
     image = await image_ai.generate_image_prodia(prompt=prompt, model=model, neg=None)
     await context.bot.send_photo(chat_id=update.effective_chat.id, photo=image,
                                  caption=f'по запросу: "{prompt}"\n'
-                                         f'rating: {censor_warning}',
+                                         f'rating: {censor_warning}\n'
+                                         f'model: {query.data}',
                                  has_spoiler=censor)
+    end_timer = time.time()
+    result = round(end_timer - start_timer, 2)
     if user_logger:
-        print(f'{Fore.YELLOW}User {update.effective_user.name} requested:{Fore.CYAN}\n'
-              f'"{prompt}"\n')
+        print(f'{Fore.YELLOW + Style.BRIGHT}User {Fore.LIGHTBLUE_EX}{update.effective_user.name}{Fore.YELLOW}'
+              f'requested: {Fore.CYAN + Style.NORMAL}\n'
+              f'"{prompt}"\n'
+              f'{Fore.YELLOW + Style.BRIGHT}Necogram created the image in: {Fore.LIGHTBLUE_EX}'
+              f'{result} seconds{Fore.RESET}')
+
+
+async def tts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not context.args:
+        return await context.bot.send_message(chat_id=update.effective_chat.id,
+                                              text='Пожалуйста, укажите текстовый запрос который нужно озвучить.\n'
+                                                   '/tts request')
+    text = r' '.join(context.args)
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action='record_voice')
+    voice = await bot_tts.generate_speech(text=text)
+    await context.bot.send_voice(chat_id=update.effective_chat.id, voice=voice,
+                                 reply_to_message_id=update.effective_message.id)
 
 
 def main():
@@ -195,6 +222,7 @@ def main():
         app.add_handler(CommandHandler("help", help))
         app.add_handler(CommandHandler("imagine", imagine))
         app.add_handler(CommandHandler("get_id", get_id))
+        app.add_handler(CommandHandler("tts", tts))
         app.add_handler(CallbackQueryHandler(button))
 
         print(f'{Fore.YELLOW}Слава Омниссии бот запустился!\n'
