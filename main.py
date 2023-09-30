@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 import time
-# from keep_alive import keep_alive
+from keep_alive import run_flask_in_thread
 
 from modules import chatGPT, image_ai, bot_tts
 
@@ -53,7 +53,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
            "чтобы радовать вас ответами и изображениями!~ (─‿‿─)\n" \
            "Вы также можете найти меня на [GitHub:](https://github.com/Lorgar-Horusov/nekogram)\n" \
            "Если вы хотите поддержать моего разработчика, то можете купить ему баночку энергетика\n" \
-           "Или помочь ему с приобретением нового хостинга [Boosty:](Link)"  # TODO не забудь оставить ссылку
+           "Или помочь ему с приобретением нового хостинга [Boosty:](https://boosty.to/lorgar-horusov/single-payment/donation/474159/target?share=target_link)"
 
     try:
         with open(json_file_path, "r") as json_file:
@@ -61,12 +61,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     except (FileNotFoundError, json.decoder.JSONDecodeError):
         existing_data = []
 
-    new_channel_id = update.effective_chat.id
+    new_channel = update.effective_chat.id
+    chat_entry = next((entry for entry in existing_data if entry.get("Chat ID") == new_channel), None)
 
-    if new_channel_id not in existing_data:
-        existing_data.append(new_channel_id)
+    if chat_entry is None:
+        chat_entry = {"Chat ID": new_channel, "notification_enable": True}
+        existing_data.append(chat_entry)
         with open(json_file_path, 'w') as json_file:
-            json.dump(existing_data, json_file)
+            json.dump(existing_data, json_file, indent=4)
 
     await context.bot.send_photo(chat_id=update.effective_chat.id,
                                  photo='https://i.ibb.co/VSvjnLh/image.png',
@@ -103,14 +105,23 @@ async def msend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if admin_id != update.effective_user.id:
         await context.bot.send_message(chat_id=update.effective_chat.id, text='Yor not permission for this command')
         return
+
     try:
         with open(json_file_path, "r") as json_file:
             existing_data = json.load(json_file)
     except (FileNotFoundError, json.decoder.JSONDecodeError):
         existing_data = []
     text = ' '.join(context.args)
+
     for chat_id in existing_data:
-        await context.bot.send_message(chat_id=chat_id, text=text)
+        if chat_id.get('notification_enable'):
+            try:
+                await context.bot.send_message(chat_id=chat_id.get('Chat ID'), text=text)
+                print(f'{Fore.YELLOW + Style.BRIGHT}Sending to ---> {Fore.CYAN + Style.NORMAL}'
+                      f'{chat_id.get("Chat ID")}{Fore.GREEN} Done!{Fore.RESET}')
+            except Exception as e:
+                print(f'{Fore.RED + Style.BRIGHT}Sending to -x-> {Fore.CYAN + Style.NORMAL}'
+                      f'{chat_id.get("Chat ID")}{Fore.RED} Error! ({e}){Fore.RESET}')
 
 
 async def imagine(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -196,8 +207,31 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         print(f'{Fore.YELLOW + Style.BRIGHT}User {Fore.LIGHTBLUE_EX}{update.effective_user.name}{Fore.YELLOW}'
               f'requested: {Fore.CYAN + Style.NORMAL}\n'
               f'"{prompt}"\n'
-              f'{Fore.YELLOW + Style.BRIGHT}Necogram created the image in: {Fore.LIGHTBLUE_EX}'
+              f'{Fore.YELLOW + Style.BRIGHT}Necogram created the image in: {Style.NORMAL + Fore.LIGHTBLUE_EX}'
               f'{result} seconds{Fore.RESET}')
+
+
+async def alerts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    chat_id = update.effective_chat.id
+    try:
+        with open(json_file_path, "r") as json_file:
+            existing_data = json.load(json_file)
+    except (FileNotFoundError, json.decoder.JSONDecodeError):
+        existing_data = []
+    chat_entry = next((entry for entry in existing_data if entry.get("Chat ID") == chat_id), None)
+    if chat_entry is None:
+        await context.bot.send_message(chat_id=chat_id, text='Похоже вы не подключены к системе '
+                                                             'уведомлений, пожалуйста пропишите '
+                                                             '/start чтобы подключиться')
+    else:
+        chat_entry["notification_enable"] = not chat_entry.get("notification_enable")
+        if chat_entry.get('notification_enable'):
+            await context.bot.send_message(chat_id=chat_id, text='enabled')
+        else:
+            await context.bot.send_message(chat_id=chat_id, text='disabled')
+
+    with open(json_file_path, 'w') as json_file:
+        json.dump(existing_data, json_file, indent=4)
 
 
 async def tts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -214,12 +248,13 @@ async def tts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main():
     try:
-        # keep_alive()
+        run_flask_in_thread()
         app = ApplicationBuilder().token(TOKEN).build()
         app.add_handler(CommandHandler("ask", ask))
         app.add_handler(CommandHandler("msend", msend))
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("help", help))
+        app.add_handler(CommandHandler("alerts", alerts))
         app.add_handler(CommandHandler("imagine", imagine))
         app.add_handler(CommandHandler("get_id", get_id))
         app.add_handler(CommandHandler("tts", tts))
