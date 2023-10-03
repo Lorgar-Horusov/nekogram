@@ -32,7 +32,7 @@ async def chatGPT(model='gpt-3.5-turbo-16k', prompt=''):
 
 async def chat_response(prompt=''):
     try:
-        response_text = await chatGPT(model='falcon-180b-chat', prompt=prompt)
+        response_text = await chatGPT(model='claude-2', prompt=prompt)
     except Exception as e:
         try:
             response_text = await chatGPT(model='llama-2-70b-chat', prompt=prompt)
