@@ -31,9 +31,10 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     /help - Выводит список команд(Логично да?)
     /start - Выводит информацию о боте
     /ask - задать вопрос боту (/ask prompt)
-    /imagine - сгенерировать изображения (/imagine model prompt)
-    /model_list выодит список моделей для генерации изображений 
-    /get_id Возвращает id пользователя
+    /imagine - сгенерировать изображения (/imagine prompt)
+    /donation - Контакты для пожертвований на развитие бота
+    /get_id - Возвращает id пользователя
+    /alert - Включение/Выключение уведомлений
     '''
     await context.bot.send_message(chat_id=update.effective_chat.id, text=text,
                                    reply_to_message_id=update.effective_message.id)
@@ -53,7 +54,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
            "чтобы радовать вас ответами и изображениями!~ (─‿‿─)\n" \
            "Вы также можете найти меня на [GitHub:](https://github.com/Lorgar-Horusov/nekogram)\n" \
            "Если вы хотите поддержать моего разработчика, то можете купить ему баночку энергетика\n" \
-           "Или помочь ему с приобретением нового хостинга [Boosty:](https://boosty.to/lorgar-horusov/single-payment/donation/474159/target?share=target_link)"
+           "Или помочь ему с приобретением нового хостинга написав команду /donation"
 
     try:
         with open(json_file_path, "r") as json_file:
@@ -75,6 +76,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                  caption=text, parse_mode='Markdown')
 
 
+async def donation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    text = '''
+Спасибо, что вы решили сделать донат! Для этого, пожалуйста, выполните следующие шаги:
+1. Отсканируйте QR-код ниже.
+2. Внесите желаемую сумму в качестве пожертвования.
+'''
+
+    await context.bot.send_photo(chat_id=update.effective_chat.id,
+                                 photo='https://i.ibb.co/cc1LQjP/photo-2023-10-03-12-26-27.png',
+                                 caption=text, parse_mode='Markdown')
+
+
+
 async def ask(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not context.args:
         return await context.bot.send_message(chat_id=update.effective_chat.id,
@@ -84,15 +98,22 @@ async def ask(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action='typing')
     start_timer = time.time()
     text = await chatGPT.chat_response(prompt=prompt)
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=text,
-                                   reply_to_message_id=update.effective_message.id)
+    response = await chatGPT.search(prompt=prompt)
+    text = await chatGPT.chat_response(prompt=text)
+    await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=text,
+            reply_to_message_id=update.effective_message.id
+        )
+
     end_timer = time.time()
     result = round(end_timer - start_timer, 2)
     if user_logger:
         print(f'{Fore.YELLOW + Style.BRIGHT}User {Fore.LIGHTBLUE_EX}{update.effective_user.name}{Fore.YELLOW}'
               f'requested:{Fore.CYAN + Style.NORMAL}\n'
               f'"{prompt}"\n'
-              f'{Fore.YELLOW + Style.BRIGHT}Nekogram response: {Fore.LIGHTBLUE_EX}{result} seconds{Fore.CYAN}\n'
+              f'{Fore.YELLOW + Style.BRIGHT}Nekogram response: {Fore.LIGHTBLUE_EX}{result} seconds'
+              f'{Fore.CYAN + Style.NORMAL}\n'
               f'"{text}"{Fore.RESET}')
 
 
@@ -111,12 +132,13 @@ async def msend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             existing_data = json.load(json_file)
     except (FileNotFoundError, json.decoder.JSONDecodeError):
         existing_data = []
-    text = ' '.join(context.args)
+
+    text = ' '.join(context.args).replace('\\n', '\n')
 
     for chat_id in existing_data:
         if chat_id.get('notification_enable'):
             try:
-                await context.bot.send_message(chat_id=chat_id.get('Chat ID'), text=text)
+                await context.bot.send_message(chat_id=chat_id.get('Chat ID'), text=text, parse_mode='Markdown')
                 print(f'{Fore.YELLOW + Style.BRIGHT}Sending to ---> {Fore.CYAN + Style.NORMAL}'
                       f'{chat_id.get("Chat ID")}{Fore.GREEN} Done!{Fore.RESET}')
             except Exception as e:
@@ -254,6 +276,7 @@ def main():
         app.add_handler(CommandHandler("msend", msend))
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("help", help))
+        app.add_handler(CommandHandler("donation", donation))
         app.add_handler(CommandHandler("alerts", alerts))
         app.add_handler(CommandHandler("imagine", imagine))
         app.add_handler(CommandHandler("get_id", get_id))
@@ -265,8 +288,8 @@ def main():
         app.run_polling()
     except Exception as e:
         print(f'{Fore.YELLOW}Бот умер по причине\n'
-              f'{Fore.RED}{e}{Fore.RESET}'
-              f'Пожалуйста свяжитесь с администратором'
+              f'{Fore.RED}{e}{Fore.RESET}\n'
+              f'Пожалуйста свяжитесь с администратором '
               f'https://t.me/Teodor_Guerra')
 
 
